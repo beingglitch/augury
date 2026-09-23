@@ -5,7 +5,7 @@ from augury.rag.embed import LocalEmbedder
 from augury.rag.ingest import DocChunk, iter_chunks
 from augury.rag.chain import chain
 
-def ask(question: str) -> str:
+def answer_question(question: str) -> str:
     e = LocalEmbedder()
     s = VectorStore(e)
 
