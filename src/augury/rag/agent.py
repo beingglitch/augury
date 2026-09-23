@@ -1,5 +1,6 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
+import asyncio
 
 from augury.storage.store import VectorStore
 from augury.rag.embed import LocalEmbedder
@@ -28,14 +29,14 @@ def build_agents(store: VectorStore):
 
         return {'context': new_context}
 
-    def generate(state: RAGState):
+    async def generate(state: RAGState):
 
-        new_answer = chain.invoke({ 'context': state['context'], 'question': state['question']})
+        new_answer = await chain.ainvoke({ 'context': state['context'], 'question': state['question']})
 
         return {'answer': new_answer}
 
-    def grade(state: RAGState):
-        response = grading_chain.invoke({'question': state['question'], 'answer': state['answer']})
+    async def grade(state: RAGState):
+        response = await grading_chain.ainvoke({'question': state['question'], 'answer': state['answer']})
         is_good = response.strip().lower() == 'yes'
 
         return {'is_good': is_good, 'attempts': state["attempts"] + 1}
@@ -66,19 +67,22 @@ def build_agents(store: VectorStore):
     return graph.compile()
 
 if __name__ == "__main__":
-    e = LocalEmbedder()
-    store = VectorStore(e, path="data/chroma")
+    async def main():
+        e = LocalEmbedder()
+        store = VectorStore(e, path="data/chroma")
+    
+        app = build_agents(store)
+    
+        ask: RAGState = {
+            'context': "",
+            "answer": "",
+            "is_good": False,
+            "attempts": 0,
+            "question": "what is hexacopter"
+        }
+    
+        result = await app.ainvoke(ask)
+    
+        print(result)
 
-    app = build_agents(store)
-
-    ask: RAGState = {
-        'context': "",
-        "answer": "",
-        "is_good": False,
-        "attempts": 0,
-        "question": "what is hexacopter"
-    }
-
-    result = app.invoke(ask)
-
-    print(result)
+    asyncio.run(main())
