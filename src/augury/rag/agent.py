@@ -1,6 +1,7 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, END
 import asyncio
+from pprint import pprint
 
 from augury.storage.store import VectorStore
 from augury.rag.embed import LocalEmbedder
@@ -9,7 +10,7 @@ from augury.rag.chain import chain, grading_chain
 class RAGState(TypedDict):
     question: str
     answer: str
-    context: str
+    context: list[str]
     is_good: bool
     attempts: int
 
@@ -23,15 +24,13 @@ def build_agents(store: VectorStore):
 
         chunks = store.query(query=state['question'], n_results=10)
 
-        new_context = ""
-        for chunk in chunks:
-            new_context += " " + chunk.text
+        new_context = [chunk.text for chunk in chunks]
 
         return {'context': new_context}
 
     async def generate(state: RAGState):
 
-        new_answer = await chain.ainvoke({ 'context': state['context'], 'question': state['question']})
+        new_answer = await chain.ainvoke({ 'context': " ".join(state['context']), 'question': state['question']})
 
         return {'answer': new_answer}
 
@@ -74,7 +73,7 @@ if __name__ == "__main__":
         app = build_agents(store)
     
         ask: RAGState = {
-            'context': "",
+            'context': [],
             "answer": "",
             "is_good": False,
             "attempts": 0,
@@ -83,6 +82,6 @@ if __name__ == "__main__":
     
         result = await app.ainvoke(ask)
     
-        print(result)
+        pprint(result)
 
     asyncio.run(main())
